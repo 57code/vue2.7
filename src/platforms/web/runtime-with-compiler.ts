@@ -17,11 +17,14 @@ const idToTemplate = cached(id => {
   return el && el.innerHTML
 })
 
+// 扩展原型方法$mount
+// 增加web平台特有一些功能
 const mount = Vue.prototype.$mount
 Vue.prototype.$mount = function (
   el?: string | Element,
   hydrating?: boolean
 ): Component {
+  // 找到宿主元素
   el = el && query(el)
 
   /* istanbul ignore if */
@@ -33,8 +36,11 @@ Vue.prototype.$mount = function (
     return this
   }
 
+  // 获取选项
   const options = this.$options
   // resolve template/el and convert to render function
+  // 扩展本质：解析模板，编译出所需的渲染函数render选项
+  // 如果render选项不存在，则获取template
   if (!options.render) {
     let template = options.template
     if (template) {
@@ -59,6 +65,8 @@ Vue.prototype.$mount = function (
       }
     } else if (el) {
       // @ts-expect-error
+      // 如果用户既没有设置render，也没有设置template
+      // 则获取宿主元素outerHTML作为编译内容
       template = getOuterHTML(el)
     }
     if (template) {
@@ -67,6 +75,7 @@ Vue.prototype.$mount = function (
         mark('compile')
       }
 
+      // 编译template为render函数
       const { render, staticRenderFns } = compileToFunctions(
         template,
         {
@@ -78,6 +87,7 @@ Vue.prototype.$mount = function (
         },
         this
       )
+      // 指定到选项上
       options.render = render
       options.staticRenderFns = staticRenderFns
 

@@ -141,7 +141,9 @@ export function mountComponent(
   el: Element | null | undefined,
   hydrating?: boolean
 ): Component {
+  // 保存在组件实例上
   vm.$el = el
+  // 获取渲染函数，如果没有做一个mock
   if (!vm.$options.render) {
     // @ts-expect-error invalid type
     vm.$options.render = createEmptyVNode
@@ -166,8 +168,10 @@ export function mountComponent(
       }
     }
   }
+  // 派发beforeMount
   callHook(vm, 'beforeMount')
 
+  // 组件更新函数
   let updateComponent
   /* istanbul ignore if */
   if (__DEV__ && config.performance && mark) {
@@ -188,11 +192,15 @@ export function mountComponent(
       measure(`vue ${name} patch`, startTag, endTag)
     }
   } else {
+    // 定义组件更新函数：
+    // 1.先执行渲染函数获取vnode
+    // 2.将vnode通过update函数转为dom
     updateComponent = () => {
       vm._update(vm._render(), hydrating)
     }
   }
 
+  
   const watcherOptions: WatcherOptions = {
     before() {
       if (vm._isMounted && !vm._isDestroyed) {
@@ -209,6 +217,8 @@ export function mountComponent(
   // we set this to vm._watcher inside the watcher's constructor
   // since the watcher's initial patch may call $forceUpdate (e.g. inside child
   // component's mounted hook), which relies on vm._watcher being already defined
+  // 创建一个侦听器，检测组件实例中渲染函数内部的响应式数据
+  // 只要这些响应式数据变化，就重新执行updateComponent
   new Watcher(
     vm,
     updateComponent,
@@ -378,13 +388,16 @@ export function callHook(vm: Component, hook: string, args?: any[]) {
   pushTarget()
   const prev = currentInstance
   setCurrentInstance(vm)
+  // 获取用户注册钩子函数
   const handlers = vm.$options[hook]
   const info = `${hook} hook`
+  // 如果存在钩子函数，则遍历调用它们
   if (handlers) {
     for (let i = 0, j = handlers.length; i < j; i++) {
       invokeWithErrorHandling(handlers[i], vm, args || null, vm, info)
     }
   }
+  // <comp @hook:created="oncreated">
   if (vm._hasHookEvent) {
     vm.$emit('hook:' + hook)
   }

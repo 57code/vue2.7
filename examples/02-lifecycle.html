@@ -1,0 +1,20 @@
+<div id="app">{{counter}}</div>
+<script src="../dist/vue.js"></script>
+<script>
+new Vue({
+  data() {
+    return {
+      counter: '生命周期钩子'
+    }
+  },
+  mounted() {
+    console.log('mounted1!')
+  },
+  setup() {
+    // 如何注册
+    Vue.onMounted(() => {
+      console.log('mounted2!')
+    })
+  }
+}).$mount('#app')
+</script>

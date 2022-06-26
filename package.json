@@ -35,7 +35,7 @@
   },
   "sideEffects": false,
   "scripts": {
-    "dev": "rollup -w -c scripts/config.js --environment TARGET:full-dev",
+    "dev": "rollup -w -c scripts/config.js --sourcemap --environment TARGET:full-dev",
     "dev:cjs": "rollup -w -c scripts/config.js --environment TARGET:runtime-cjs-dev",
     "dev:esm": "rollup -w -c scripts/config.js --environment TARGET:runtime-esm",
     "dev:ssr": "rollup -w -c scripts/config.js --environment TARGET:server-renderer",

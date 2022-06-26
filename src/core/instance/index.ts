@@ -13,6 +13,7 @@ function Vue(options) {
   this._init(options)
 }
 
+// 混入Vue，声明Vue实例方法和属性
 //@ts-expect-error Vue has function type
 initMixin(Vue)
 //@ts-expect-error Vue has function type

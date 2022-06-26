@@ -35,6 +35,7 @@ export function initMixin(Vue: typeof Component) {
     // effect scope
     vm._scope = new EffectScope(true /* detached */)
     // merge options
+    // 合并选项
     if (options && options._isComponent) {
       // optimize internal component instantiation
       // since dynamic options merging is pretty slow, and none of the
@@ -55,12 +56,15 @@ export function initMixin(Vue: typeof Component) {
     }
     // expose real self
     vm._self = vm
-    initLifecycle(vm)
-    initEvents(vm)
-    initRender(vm)
-    callHook(vm, 'beforeCreate')
+
+    // 准备组件实例该有的属性和方法
+    initLifecycle(vm) // 初始化组件实例相关的属性，如$parent,$root,$children
+    initEvents(vm) // 组件自定义事件监听
+    initRender(vm) // 声明_c和$createElement
+    callHook(vm, 'beforeCreate') // 首次调用钩子beforeCreate
+    // 初始化组件的状态：祖辈注入provide/inject，
     initInjections(vm) // resolve injections before data/props
-    initState(vm)
+    initState(vm)  // 组件本身状态：props, data, methods, watch, computed
     initProvide(vm) // resolve provide after data/props
     callHook(vm, 'created')
 

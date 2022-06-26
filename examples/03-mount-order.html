@@ -1,0 +1,25 @@
+<div id="app">
+  {{counter}}
+  <comp></comp>
+</div>
+<script src="../dist/vue.js"></script>
+<script>
+  new Vue({
+    data() {
+      return {
+        counter: '父子组件挂载顺序'
+      }
+    },
+    components: {
+      comp: {
+        template: '<div>comp</div>',
+        mounted() {
+          console.log('comp mounted')
+        }
+      }
+    },
+    mounted() {
+      console.log('root mounted')
+    }
+  }).$mount('#app')
+</script>

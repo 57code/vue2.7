@@ -17,6 +17,7 @@ const banner =
 
 const aliases = require('./alias')
 const resolve = p => {
+  // 分割传入路径 web/xxxx.ts
   const base = p.split('/')[0]
   if (aliases[base]) {
     return path.resolve(aliases[base], p.slice(base.length + 1))
@@ -124,8 +125,13 @@ const builds = {
   },
   // Runtime+compiler development build (Browser)
   'full-dev': {
+    // 入口文件
     entry: resolve('web/entry-runtime-with-compiler.ts'),
     dest: resolve('dist/vue.js'),
+    // 打包格式：
+    // 1.umd: 兼容2,3，常用于浏览器页面，用script src方式引入
+    // 2.cjs：commonjs规范，常用于node服务端，ssr
+    // 3.esm：ecma script module，spa，webpack,vite
     format: 'umd',
     env: 'development',
     alias: { he: './entity-decoder' },

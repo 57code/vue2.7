@@ -26,18 +26,23 @@ Vue.config.getTagNamespace = getTagNamespace
 Vue.config.isUnknownElement = isUnknownElement
 
 // install platform runtime directives & components
+// 扩展浏览器平台特有的指令和组件
 extend(Vue.options.directives, platformDirectives)
 extend(Vue.options.components, platformComponents)
 
 // install platform patch function
+// 增加一个原型方法__patch__
 Vue.prototype.__patch__ = inBrowser ? patch : noop
 
 // public mount method
+// 实现了$mount
 Vue.prototype.$mount = function (
   el?: string | Element,
   hydrating?: boolean
 ): Component {
+  // 查询宿主元素
   el = el && inBrowser ? query(el) : undefined
+  // 实际调用是mountComponent
   return mountComponent(this, el, hydrating)
 }
 

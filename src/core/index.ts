@@ -4,6 +4,7 @@ import { isServerRendering } from 'core/util/env'
 import { FunctionalRenderContext } from 'core/vdom/create-functional-component'
 import { version } from 'v3'
 
+// 初始化全局API，比如Vue.component/directive/filter/use/...
 initGlobalAPI(Vue)
 
 Object.defineProperty(Vue.prototype, '$isServer', {
