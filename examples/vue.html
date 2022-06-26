@@ -1,5 +1,20 @@
 <meta http-equiv="Content-Type" content="text/html;charset=UTF-8">
+
+<div id="app"></div>
+
 <script src="./vue.js"></script>
 <script>
-  new Vue()
+  new Vue({
+    data() {
+      return {
+        foo: 'foo'
+      }
+    },
+    created() {
+      console.log('created');
+    },
+    render() {
+      return document.createTextNode(this.foo)
+    }
+  }).$mount('#app')
 </script>
