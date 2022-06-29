@@ -41,12 +41,16 @@ export class Observer {
   dep: Dep
   vmCount: number // number of vms that have this object as root $data
 
+  // 参数1：要做响应式处理的对象
   constructor(public value: any, public shallow = false) {
     // this.value = value
     this.dep = new Dep()
     this.vmCount = 0
+    // 定义__ob__属性
     def(value, '__ob__', this)
+    // 1.判断当前对象是普通对象还是数组
     if (isArray(value)) {
+      // 数组响应式处理
       if (hasProto) {
         protoAugment(value, arrayMethods)
       } else {
@@ -56,6 +60,7 @@ export class Observer {
         this.observeArray(value)
       }
     } else {
+      // 对象响应式
       this.walk(value, shallow)
     }
   }
@@ -66,9 +71,12 @@ export class Observer {
    * value type is Object.
    */
   walk(obj: object, shallow: boolean) {
+    // 获取其所有key
     const keys = Object.keys(obj)
+    // 遍历它们，对每一个key进行响应式处理
     for (let i = 0; i < keys.length; i++) {
       const key = keys[i]
+      // 定义响应式，每次只能处理一个属性
       defineReactive(obj, key, NO_INIITIAL_VALUE, undefined, shallow)
     }
   }
@@ -116,7 +124,10 @@ export function observe(value: any, shallow?: boolean): Observer | void {
   if (!isObject(value) || isRef(value) || value instanceof VNode) {
     return
   }
+  // 创建一个Observer实例
+  // 这个实例是干什么的？
   let ob: Observer | void
+  // 避免重复创建，判断__ob__是否有值
   if (hasOwn(value, '__ob__') && value.__ob__ instanceof Observer) {
     ob = value.__ob__
   } else if (
@@ -126,6 +137,7 @@ export function observe(value: any, shallow?: boolean): Observer | void {
     Object.isExtensible(value) &&
     !value.__v_skip
   ) {
+    // 创建新的实例
     ob = new Observer(value, shallow)
   }
   return ob
@@ -158,12 +170,15 @@ export function defineReactive(
     val = obj[key]
   }
 
+  // 如果当前val是对象，则需要递归处理
   let childOb = !shallow && observe(val)
+  // 属性拦截
   Object.defineProperty(obj, key, {
     enumerable: true,
     configurable: true,
     get: function reactiveGetter() {
       const value = getter ? getter.call(obj) : val
+      // 依赖收集
       if (Dep.target) {
         if (__DEV__) {
           dep.depend({
@@ -185,6 +200,7 @@ export function defineReactive(
     },
     set: function reactiveSetter(newVal) {
       const value = getter ? getter.call(obj) : val
+      // 比较是否发生变化
       if (!hasChanged(value, newVal)) {
         return
       }
@@ -202,6 +218,8 @@ export function defineReactive(
       } else {
         val = newVal
       }
+      // 新值如果是一个对象
+      // 则仍需要做一次递归响应式处理
       childOb = !shallow && observe(newVal)
       if (__DEV__) {
         dep.notify({
@@ -212,6 +230,7 @@ export function defineReactive(
           oldValue: value
         })
       } else {
+        // 通知更新
         dep.notify()
       }
     }

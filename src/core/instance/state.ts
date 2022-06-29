@@ -51,19 +51,26 @@ export function proxy(target: Object, sourceKey: string, key: string) {
 
 export function initState(vm: Component) {
   const opts = vm.$options
+  // 初始化属性
   if (opts.props) initProps(vm, opts.props)
 
   // Composition API
+  // composition API支持
+  // 初始化setup
   initSetup(vm)
 
+  // 初始化methods选项
   if (opts.methods) initMethods(vm, opts.methods)
+  // 初始化数据data选项
   if (opts.data) {
     initData(vm)
   } else {
     const ob = observe((vm._data = {}))
     ob && ob.vmCount++
   }
+  // 初始化计算属性
   if (opts.computed) initComputed(vm, opts.computed)
+  // 初始化watch选项
   if (opts.watch && opts.watch !== nativeWatch) {
     initWatch(vm, opts.watch)
   }
@@ -120,7 +127,9 @@ function initProps(vm: Component, propsOptions: Object) {
 }
 
 function initData(vm: Component) {
+  // 获取用户设置data选项
   let data: any = vm.$options.data
+  // 是否是一个函数
   data = vm._data = isFunction(data) ? getData(data, vm) : data || {}
   if (!isPlainObject(data)) {
     data = {}
@@ -132,6 +141,7 @@ function initData(vm: Component) {
       )
   }
   // proxy data on instance
+  // 校验，避免和props冲突
   const keys = Object.keys(data)
   const props = vm.$options.props
   const methods = vm.$options.methods
@@ -155,6 +165,7 @@ function initData(vm: Component) {
     }
   }
   // observe data
+  // 递归遍历data，响应式处理
   const ob = observe(data)
   ob && ob.vmCount++
 }

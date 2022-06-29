@@ -12,6 +12,9 @@
     },
     created() {
       console.log('created');
+      setTimeout(() => {
+        this.foo = 'bar'
+      }, 1000)
     },
     render() {
       return document.createTextNode(this.foo)
