@@ -29,6 +29,7 @@ export default class Dep {
   }
 
   addSub(sub: DepTarget) {
+    // 追加watcher实例到subs中
     this.subs.push(sub)
   }
 
@@ -38,6 +39,7 @@ export default class Dep {
 
   depend(info?: DebuggerEventExtraInfo) {
     if (Dep.target) {
+      // 双方相互保存关系
       Dep.target.addDep(this)
       if (__DEV__ && info && Dep.target.onTrack) {
         Dep.target.onTrack({
@@ -50,6 +52,8 @@ export default class Dep {
 
   notify(info?: DebuggerEventExtraInfo) {
     // stabilize the subscriber list first
+    // subs中存储的是管理Dep的所有Watcher
+    // 遍历它们，让他们执行更新
     const subs = this.subs.slice()
     if (__DEV__ && !config.async) {
       // subs aren't sorted in scheduler if not running async

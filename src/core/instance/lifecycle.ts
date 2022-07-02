@@ -171,7 +171,7 @@ export function mountComponent(
   // 派发beforeMount
   callHook(vm, 'beforeMount')
 
-  // 组件更新函数
+  // 1.组件更新函数
   let updateComponent
   /* istanbul ignore if */
   if (__DEV__ && config.performance && mark) {
@@ -219,6 +219,7 @@ export function mountComponent(
   // component's mounted hook), which relies on vm._watcher being already defined
   // 创建一个侦听器，检测组件实例中渲染函数内部的响应式数据
   // 只要这些响应式数据变化，就重新执行updateComponent
+  // 2.创建Watcher实例，构建更新机制
   new Watcher(
     vm,
     updateComponent,

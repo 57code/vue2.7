@@ -44,6 +44,9 @@ export class Observer {
   // 参数1：要做响应式处理的对象
   constructor(public value: any, public shallow = false) {
     // this.value = value
+    // 这里也有Dep，一个对象对应衣蛾Ob实例
+    // Vue.set/delete: 动态添加和删除对象属性，数组项的时候
+    // 在用户动态新增或删除属性时，通知组件更新
     this.dep = new Dep()
     this.vmCount = 0
     // 定义__ob__属性
@@ -153,6 +156,8 @@ export function defineReactive(
   customSetter?: Function | null,
   shallow?: boolean
 ) {
+  // 每次执行defineReactive就创建一个Dep实例
+  // key对应一个Dep实例
   const dep = new Dep()
 
   const property = Object.getOwnPropertyDescriptor(obj, key)
@@ -179,6 +184,8 @@ export function defineReactive(
     get: function reactiveGetter() {
       const value = getter ? getter.call(obj) : val
       // 依赖收集
+      // 1.Dep是什么？ 依赖，视图中的动态项
+      // 2.Dep.target是什么？ 一个Watcher实例
       if (Dep.target) {
         if (__DEV__) {
           dep.depend({
@@ -187,9 +194,12 @@ export function defineReactive(
             key
           })
         } else {
+          // 建立关系：watcher实例和dep实例
           dep.depend()
         }
         if (childOb) {
+          // 出现对象嵌套时，子ob也要和组件的watcher之间产生关系
+          // 便于该对象内部有属性新增或删除时通知组件更新
           childOb.dep.depend()
           if (isArray(value)) {
             dependArray(value)

@@ -115,6 +115,7 @@ export default class Watcher implements DepTarget {
           )
       }
     }
+
     this.value = this.lazy ? undefined : this.get()
   }
 
@@ -122,10 +123,12 @@ export default class Watcher implements DepTarget {
    * Evaluate the getter, and re-collect dependencies.
    */
   get() {
+    // 推送目标
     pushTarget(this)
     let value
     const vm = this.vm
     try {
+      // 立刻执行一次getter
       value = this.getter.call(vm, vm)
     } catch (e: any) {
       if (this.user) {
@@ -149,11 +152,13 @@ export default class Watcher implements DepTarget {
    * Add a dependency to this directive.
    */
   addDep(dep: Dep) {
+    // 保存和watcher相关的Dep信息
     const id = dep.id
     if (!this.newDepIds.has(id)) {
       this.newDepIds.add(id)
       this.newDeps.push(dep)
       if (!this.depIds.has(id)) {
+        // 建立Dep和watcher之间信息
         dep.addSub(this)
       }
     }

@@ -7,7 +7,10 @@
   new Vue({
     data() {
       return {
-        foo: 'foo'
+        foo: 'foo',
+        bar: {
+          baz: 'baz',
+        }
       }
     },
     created() {
@@ -15,9 +18,16 @@
       setTimeout(() => {
         this.foo = 'bar'
       }, 1000)
+      this.$set(this.foo.bar, 'dong', 'dong')
     },
     render() {
       return document.createTextNode(this.foo)
     }
   }).$mount('#app')
+
+  // const obj = {foo: {bar: 'bar'}}
+  // defineReactive(obj, 'foo', obj['foo'])
+  // obj.foo.bar
+  // obj.foo = 'foo~'
+
 </script>
