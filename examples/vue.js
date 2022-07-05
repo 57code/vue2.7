@@ -37,7 +37,7 @@ function initData(vm) {
   // 遍历data中所有key，对它们做代理
   const keys = Object.keys(data)
   let i = keys.length
-  while(i--) {
+  while (i--) {
     const key = keys[i]
     proxy(vm, '_data', key)
   }
@@ -58,9 +58,16 @@ Vue.prototype.$mount = function (el) {
   // data
   // const data = this._data
 
-  // append
-  const node = this.$options.render.call(this)
-  parent.appendChild(node)
+  const updateComponent = () => {
+    // 先清空宿主
+    parent.innerHTML = ''
+    // append
+    const node = this.$options.render.call(this)
+    parent.appendChild(node)
+  }
+
+  // 创建Watcher实例，作为组件渲染Watcher
+  new Watcher(this, updateComponent)
 }
 
 // 代理指定对象的某个key到souceKey上
@@ -77,16 +84,25 @@ function proxy(target, sourceKey, key) {
 
 // 将传入的obj，key做拦截，从而实现响应式
 function defineReactive(obj, key, val = {}) {
+  const dep = new Dep()
+
   // 递归处理
   observe(val)
   Object.defineProperty(obj, key, {
     get() {
       console.log('get', key);
+      // 测试依赖收集目标是否存在
+      if (Dep.target) {
+        dep.depend()
+        console.log(dep.subs);
+      }
       return val
     },
     set(newVal) {
       val = newVal
       console.log('set', key);
+      // 变更通知
+      dep.notify()
     }
   })
 }
@@ -131,6 +147,68 @@ class Observer {
       const val = obj[key]
       // 响应式处理
       defineReactive(obj, key, val)
+    }
+  }
+}
+
+class Watcher {
+  constructor(vm, expOrFn) {
+    this.vm = vm
+    this.getter = expOrFn
+
+    // 保存管理的所有deps
+    this.newDepIds = new Set()
+    this.newDeps = []
+    
+    // 立刻触发getter函数执行
+    this.get()
+  }
+  get() {
+    // 0.设置依赖目标
+    Dep.target = this
+    const vm = this.vm
+    // 1.调用getter
+    try {
+      this.getter.call(vm, vm)
+    } catch (error) {
+      throw error
+    } finally {
+      // 执行结束，还原依赖目标
+      Dep.target = undefined
+    }
+  }
+  addDep(dep) {
+    const id = dep.id
+    if (!this.newDepIds.has(id)) {
+      this.newDepIds.add(id)
+      this.newDeps.push(dep)
+
+      // 反过来将自己添加到dep中
+      dep.addSub(this)
+    }
+  }
+  update() {
+    this.get()
+  }
+}
+
+let uid = 0
+class Dep {
+  constructor() {
+    this.id = uid++
+    this.subs = []
+  }
+  // 通知Watch添加自己
+  // 从而建立当前dep和watcher之间的关系
+  depend() {
+    Dep.target.addDep(this)
+  }
+  addSub(watcher) {
+    this.subs.push(watcher)
+  }
+  notify() {
+    for (const sub of this.subs) {
+      sub.update()
     }
   }
 }
