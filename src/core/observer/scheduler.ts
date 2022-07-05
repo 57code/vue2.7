@@ -156,6 +156,7 @@ function callActivatedHooks(queue) {
  */
 export function queueWatcher(watcher: Watcher) {
   const id = watcher.id
+  // 去重
   if (has[id] != null) {
     return
   }
@@ -184,6 +185,7 @@ export function queueWatcher(watcher: Watcher) {
       flushSchedulerQueue()
       return
     }
+    // 异步执行flushSchedulerQueue
     nextTick(flushSchedulerQueue)
   }
 }
