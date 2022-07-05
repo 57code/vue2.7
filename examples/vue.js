@@ -87,7 +87,7 @@ function defineReactive(obj, key, val = {}) {
   const dep = new Dep()
 
   // 递归处理
-  observe(val)
+  const childOb = observe(val)
   Object.defineProperty(obj, key, {
     get() {
       console.log('get', key);
@@ -95,6 +95,11 @@ function defineReactive(obj, key, val = {}) {
       if (Dep.target) {
         dep.depend()
         console.log(dep.subs);
+        // 嵌套对象的Observer实例中的dep也要和Watcher建立依赖关系
+        if (childOb) {
+          childOb.dep.depend()
+          console.log('childOb dep', childOb.dep.subs);
+        }
       }
       return val
     },
@@ -118,13 +123,16 @@ function observe(obj) {
   if (Object.prototype.hasOwnProperty.call(obj, '__ob__')) {
     ob = value.__ob__
   } else {
-    new Observer(obj)
+    ob = new Observer(obj)
   }
   return ob
 }
 
 class Observer {
   constructor(value) {
+    // 创建一个半生的Dep实例
+    this.dep = new Dep()
+    
     // 定义__ob__属性
     Object.defineProperty(value, '__ob__', {
       value: this,
@@ -210,5 +218,32 @@ class Dep {
     for (const sub of this.subs) {
       sub.update()
     }
+  }
+}
+
+// 全局注册api
+Vue.set = set
+Vue.delete = del
+// 实例api
+Vue.prototype.$set = set
+Vue.prototype.$delete = del
+
+function set(obj, key, val) {
+  const ob = obj.__ob__
+  if (!ob) {
+    // 是普通对象
+    obj[key] = val
+  } else {
+    // 1.设置动态属性拦截
+    defineReactive(obj, key, val)
+    // 2.变更通知
+    ob.dep.notify()
+  }
+}
+function del(obj, key) {
+  const ob = obj.__ob__
+  delete obj[key]
+  if (ob) {
+    ob.dep.notify()
   }
 }

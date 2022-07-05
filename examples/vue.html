@@ -8,19 +8,19 @@
     data() {
       return {
         foo: 'foo',
-        bar: {
-          baz: 'baz',
-        }
+        bar: {}
       }
     },
     created() {
       console.log('created');
       setTimeout(() => {
         this.foo = 'bar'
+        this.$set(this.bar, 'baz', 'baz')
       }, 1000)
     },
     render() {
-      return document.createTextNode(this.foo)
+      const baz = this.bar.baz || ''
+      return document.createTextNode(this.foo + baz)
     }
   }).$mount('#app')
 
