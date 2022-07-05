@@ -37,6 +37,8 @@ export function toggleObserving(value: boolean) {
  * object's property keys into getter/setters that
  * collect dependencies and dispatch updates.
  */
+// 区分传入要做响应式处理的对象类型
+// 根据类型做不同操作
 export class Observer {
   dep: Dep
   vmCount: number // number of vms that have this object as root $data
@@ -55,11 +57,13 @@ export class Observer {
     if (isArray(value)) {
       // 数组响应式处理
       if (hasProto) {
+        // 传入数组实例和覆盖扩展之后的数组方法
         protoAugment(value, arrayMethods)
       } else {
         copyAugment(value, arrayMethods, arrayKeys)
       }
       if (!shallow) {
+        // [obj, arr]
         this.observeArray(value)
       }
     } else {
@@ -102,6 +106,7 @@ export class Observer {
  */
 function protoAugment(target, src: Object) {
   /* eslint-disable no-proto */
+  // 修改原型
   target.__proto__ = src
   /* eslint-enable no-proto */
 }
@@ -256,6 +261,7 @@ export function defineReactive(
  */
 export function set<T>(array: T[], key: number, value: T): T
 export function set<T>(object: object, key: string | number, value: T): T
+// Vue.set(obj, key, val)
 export function set(
   target: any[] | Record<string, any>,
   key: any,
@@ -292,6 +298,7 @@ export function set(
     target[key] = val
     return val
   }
+  // 给动态设置的属性做拦截处理
   defineReactive(ob.value, key, val)
   if (__DEV__) {
     ob.dep.notify({
@@ -302,6 +309,7 @@ export function set(
       oldValue: undefined
     })
   } else {
+    // 通知关联依赖目标执行更新
     ob.dep.notify()
   }
   return val
@@ -340,6 +348,7 @@ export function del(target: any[] | object, key: any) {
     return
   }
   delete target[key]
+  // 变更通知
   if (!ob) {
     return
   }
@@ -358,6 +367,7 @@ export function del(target: any[] | object, key: any) {
  * Collect dependencies on array elements when the array is touched, since
  * we cannot intercept array element access like property getters.
  */
+// 将数组中所有元素，甚至内部嵌套数组都做一遍依赖收集
 function dependArray(value: Array<any>) {
   for (let e, i = 0, l = value.length; i < l; i++) {
     e = value[i]
