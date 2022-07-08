@@ -8,7 +8,8 @@
     data() {
       return {
         foo: 'foo',
-        bar: {}
+        bar: {},
+        arr: [1, 2, {n:1}]
       }
     },
     created() {
@@ -16,11 +17,16 @@
       setTimeout(() => {
         this.foo = 'bar'
         this.$set(this.bar, 'baz', 'baz')
+        this.arr.push(4)
+        this.$delete(this.arr, 2)
+        this.$set(this.arr, 3, 10)
       }, 1000)
+      console.log(this.arr);
     },
     render() {
       const baz = this.bar.baz || ''
-      return document.createTextNode(this.foo + baz)
+      const arr = this.arr.join(',')
+      return document.createTextNode(this.foo + baz + arr)
     }
   }).$mount('#app')
 

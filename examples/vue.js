@@ -99,6 +99,10 @@ function defineReactive(obj, key, val = {}) {
         if (childOb) {
           childOb.dep.depend()
           console.log('childOb dep', childOb.dep.subs);
+          // 对数组做额外依赖收集
+          if (Array.isArray(val)) {
+            dependArray(val)
+          }
         }
       }
       return val
@@ -111,6 +115,21 @@ function defineReactive(obj, key, val = {}) {
     }
   })
 }
+
+// 数组内所有对象都需要做依赖收集
+function dependArray(items) {
+  for (const item of items) {
+    if (item && item.__ob__) {
+      // 这个项是响应式对象，则对其半生ob内部的dep做依赖收集
+      item.__ob__.dep.depend()
+    }
+    // 如果item又是数组，向下递归
+    if (Array.isArray(item)) {
+      dependArray(item)
+    }
+  }
+}
+
 function observe(obj) {
   // 传入的必须是对象
   if (!(obj !== null && typeof obj === 'object')) {
@@ -142,11 +161,23 @@ class Observer {
     })
     if (Array.isArray(value)) {
       // array
+      // 覆盖数组实例的原型
+      value.__proto__ = arrayMethods
+      // 对当前数组实例做响应式
+      this.observeArray(value)
     } else {
       // object
       this.walk(value)
     }
   }
+
+  // 遍历数组内部所有项，对它们做响应式处理
+  observeArray(items) {
+    for (const item of items) {
+      observe(item)
+    }
+  }
+  
   walk(obj) {
     // 循环value对象所有key，依次进行拦截
     const keys = Object.keys(obj)
@@ -159,8 +190,10 @@ class Observer {
   }
 }
 
+let wid = 0
 class Watcher {
   constructor(vm, expOrFn) {
+    this.id = ++wid
     this.vm = vm
     this.getter = expOrFn
 
@@ -196,8 +229,71 @@ class Watcher {
     }
   }
   update() {
+    // this.get()
+    // 异步更新
+    // 排队
+    queueWatcher(this)
+  }
+  run() {
     this.get()
   }
+}
+const queue = [] // 存放待执行watcher
+const has = {}
+let waiting = false
+function queueWatcher(watcher) {
+  const id = watcher.id
+  // 去重
+  if (has[id] != null) {
+    return
+  }
+  // 不存在才入队
+  queue.push(watcher)
+  if (!waiting) {
+    waiting = true
+    // 异步执行flushSchedulerQueue
+    nextTick(flushSchedulerQueue)
+  }
+}
+
+const callbacks = [] // 用于存放异步任务
+let pending = false
+const timerFunc = () => Promise.resolve().then(flushCallbacks)
+function nextTick(cb) {
+  // 1.将cb存入callbacks数组中
+  callbacks.push(cb)
+  if (!pending) {
+    pending = true
+    // 异步启动
+    timerFunc()
+  }
+}
+
+function flushCallbacks() {
+  pending = false
+
+  const copies = callbacks.slice(0)
+  callbacks.length = 0
+
+  for (const cb of copies) {
+    cb()
+  }
+}
+
+let flushing = false
+function flushSchedulerQueue() {
+  let id
+  flushing = true
+  for (const watcher of queue) {
+    // 去掉id，去重失效了
+    id = watcher.id
+    has[id] = null
+    // 真正的更新函数被调用
+    watcher.run()
+  }
+
+  // 还原状态标识符
+  flushing = waiting = false
 }
 
 let uid = 0
@@ -229,6 +325,15 @@ Vue.prototype.$set = set
 Vue.prototype.$delete = del
 
 function set(obj, key, val) {
+  // 如果是数组的话, 可能需要扩容
+  if (Array.isArray(obj)) {
+    // 获取key和length之间的较大者，并对length扩容
+    obj.length = Math.max(obj.length, key)
+    obj.splice(key, 1, val)
+    // 由于splice操作会自动通知更新，因此直接跳出
+    return val
+  }
+  
   const ob = obj.__ob__
   if (!ob) {
     // 是普通对象
@@ -241,9 +346,55 @@ function set(obj, key, val) {
   }
 }
 function del(obj, key) {
+  // 数组直接删除该元素并跳出
+  if (Array.isArray(obj)) {
+    obj.splice(key, 1)
+    return
+  }
+  
   const ob = obj.__ob__
   delete obj[key]
   if (ob) {
     ob.dep.notify()
   }
 }
+
+// 获取数组原型，做一份克隆
+const arrayProto = Array.prototype
+const arrayMethods = Object.create(arrayProto)
+// 列出7个变更方法
+const methodsToPatch = [
+  'push', 'pop', 'shift', 'unshift', 'splice', 'sort', 'reverse'
+]
+// 扩展这7个方法，使之能够做变更通知
+methodsToPatch.forEach(function (method) {
+  // 原始方法
+  const original = arrayProto[method]
+  // 覆盖原始函数
+  Object.defineProperty(arrayMethods, method, {
+    value: function mutator(...args) {
+      // 执行原始操作
+      const result = original.apply(this, args)
+      // 扩展：增加变更通知能力
+      const ob = this.__ob__
+      // 判断是否插入新元素进来
+      let inserted
+      switch(method) {
+        case 'push':
+        case 'unshift':
+          inserted = args
+          break
+        case 'splice':
+          inserted = args.slice(2)
+          break
+      }
+      if (inserted) {
+        // 对它执行响应式处理
+        ob.observeArray(inserted)
+      }
+      // 变更通知
+      ob.dep.notify()
+      return result
+    }
+  })
+})
