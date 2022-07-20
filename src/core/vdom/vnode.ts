@@ -6,11 +6,11 @@ import type { VNodeComponentOptions, VNodeData } from 'types/vnode'
  * @internal
  */
 export default class VNode {
-  tag?: string
-  data: VNodeData | undefined
-  children?: Array<VNode> | null
-  text?: string
-  elm: Node | undefined
+  tag?: string //节点类型
+  data: VNodeData | undefined // 属性、特性、事件等
+  children?: Array<VNode> | null // 子元素
+  text?: string // 如果是文本，则会有text
+  elm: Node | undefined // 真是dom元素
   ns?: string
   context?: Component // rendered in this component's scope
   key: string | number | undefined

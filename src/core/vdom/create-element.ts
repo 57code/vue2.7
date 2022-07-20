@@ -43,6 +43,7 @@ export function createElement(
   return _createElement(context, tag, data, children, normalizationType)
 }
 
+// 返回VNode
 export function _createElement(
   context: Component,
   tag?: string | Component | Function | Object,
@@ -88,9 +89,11 @@ export function _createElement(
     children = simpleNormalizeChildren(children)
   }
   let vnode, ns
+  // 首先判断tag类型
   if (typeof tag === 'string') {
     let Ctor
     ns = (context.$vnode && context.$vnode.ns) || config.getTagNamespace(tag)
+    // 保留标签，例如div
     if (config.isReservedTag(tag)) {
       // platform built-in elements
       if (

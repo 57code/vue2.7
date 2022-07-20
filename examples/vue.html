@@ -9,7 +9,7 @@
       return {
         foo: 'foo',
         bar: {},
-        arr: [1, 2, {n:1}]
+        arr: [1, 2, { n: 1 }]
       }
     },
     created() {
@@ -23,10 +23,26 @@
       }, 1000)
       console.log(this.arr);
     },
-    render() {
+    render(h) {
+      // dom版本实现
+      // const baz = this.bar.baz || ''
+      // const arr = this.arr.join(',')
+      // return document.createTextNode(this.foo + baz + arr)
+
+      // vnode方式实现
+      // 1.单个文本
+      // const baz = this.bar.baz || ''
+      // const arr = this.arr.join(',')
+      // return h('', this.foo + baz + arr)
+
+      // 2.嵌套情况
       const baz = this.bar.baz || ''
       const arr = this.arr.join(',')
-      return document.createTextNode(this.foo + baz + arr)
+      return h('div', { attrs: { id: 'box', title: '列表' } }, [
+        h('p', {}, this.foo + baz + arr),
+        h('p', {}, this.foo + baz + arr),
+        h('p', {}, this.foo + baz + arr),
+      ])
     }
   }).$mount('#app')
 

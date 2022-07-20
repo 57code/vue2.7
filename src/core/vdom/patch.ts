@@ -28,15 +28,19 @@ import {
   isRegExp,
   isPrimitive
 } from '../util/index'
+import { create } from 'domain'
 
 export const emptyNode = new VNode('', {}, [])
 
 const hooks = ['create', 'activate', 'update', 'remove', 'destroy']
 
+// 更新时，两个节点必须认为是相同节点
 function sameVnode(a, b) {
   return (
+    // 两者key相同
     a.key === b.key &&
     a.asyncFactory === b.asyncFactory &&
+    // 两者标签名称相同
     ((a.tag === b.tag &&
       a.isComment === b.isComment &&
       isDef(a.data) === isDef(b.data) &&
@@ -69,6 +73,9 @@ export function createPatchFunction(backend) {
 
   const { modules, nodeOps } = backend
 
+  // 最终产生的对象形如：
+  // modules: [{create, update,..}]
+  // cbs.create: [fn1, fn2, fn3]
   for (i = 0; i < hooks.length; ++i) {
     cbs[hooks[i]] = []
     for (j = 0; j < modules.length; ++j) {
@@ -141,6 +148,7 @@ export function createPatchFunction(backend) {
       return
     }
 
+    // 获取节点关键数据
     const data = vnode.data
     const children = vnode.children
     const tag = vnode.tag
@@ -161,12 +169,16 @@ export function createPatchFunction(backend) {
         }
       }
 
+      // 创建元素节点
       vnode.elm = vnode.ns
         ? nodeOps.createElementNS(vnode.ns, tag)
         : nodeOps.createElement(tag, vnode)
       setScope(vnode)
 
+      // 递归处理子节点
       createChildren(vnode, children, insertedVnodeQueue)
+
+      // 如果节点有data数据，则执行属性、特性、事件、样式等的处理流程
       if (isDef(data)) {
         invokeCreateHooks(vnode, insertedVnodeQueue)
       }
@@ -289,7 +301,9 @@ export function createPatchFunction(backend) {
     return isDef(vnode.tag)
   }
 
+  // 处理元素属性
   function invokeCreateHooks(vnode, insertedVnodeQueue) {
+    // cbs是一个对象：{create: [..],update: [...]}
     for (let i = 0; i < cbs.create.length; ++i) {
       cbs.create[i](emptyNode, vnode)
     }
@@ -417,6 +431,7 @@ export function createPatchFunction(backend) {
     insertedVnodeQueue,
     removeOnly
   ) {
+    // 创建收尾4个游标和相对应的节点
     let oldStartIdx = 0
     let newStartIdx = 0
     let oldEndIdx = oldCh.length - 1
@@ -436,12 +451,15 @@ export function createPatchFunction(backend) {
       checkDuplicateKeys(newCh)
     }
 
+    // 循环条件：起始游标不能超过结尾游标
     while (oldStartIdx <= oldEndIdx && newStartIdx <= newEndIdx) {
+      // 前两个条件：游标调整，确保游标对应的节点不为空
       if (isUndef(oldStartVnode)) {
         oldStartVnode = oldCh[++oldStartIdx] // Vnode has been moved left
       } else if (isUndef(oldEndVnode)) {
         oldEndVnode = oldCh[--oldEndIdx]
       } else if (sameVnode(oldStartVnode, newStartVnode)) {
+        // 开始双端查找
         patchVnode(
           oldStartVnode,
           newStartVnode,
@@ -492,11 +510,14 @@ export function createPatchFunction(backend) {
         oldEndVnode = oldCh[--oldEndIdx]
         newStartVnode = newCh[++newStartIdx]
       } else {
+        // 正常查找
+        // 从新数组排头拿出节点去老数组中查找相同节点
         if (isUndef(oldKeyToIdx))
           oldKeyToIdx = createKeyToOldIdx(oldCh, oldStartIdx, oldEndIdx)
         idxInOld = isDef(newStartVnode.key)
           ? oldKeyToIdx[newStartVnode.key]
           : findIdxInOld(newStartVnode, oldCh, oldStartIdx, oldEndIdx)
+        // 没找到
         if (isUndef(idxInOld)) {
           // New element
           createElm(
@@ -510,6 +531,7 @@ export function createPatchFunction(backend) {
           )
         } else {
           vnodeToMove = oldCh[idxInOld]
+          // 找到了，如果是相同节点，则更新
           if (sameVnode(vnodeToMove, newStartVnode)) {
             patchVnode(
               vnodeToMove,
@@ -541,6 +563,8 @@ export function createPatchFunction(backend) {
         newStartVnode = newCh[++newStartIdx]
       }
     }
+    // 循环结束，后续处理：
+    // 1. 老数组结束，新数组多余元素批量创建
     if (oldStartIdx > oldEndIdx) {
       refElm = isUndef(newCh[newEndIdx + 1]) ? null : newCh[newEndIdx + 1].elm
       addVnodes(
@@ -552,6 +576,7 @@ export function createPatchFunction(backend) {
         insertedVnodeQueue
       )
     } else if (newStartIdx > newEndIdx) {
+      // 2. 新子元素数组结束，老数组剩余的元素批量删除
       removeVnodes(oldCh, oldStartIdx, oldEndIdx)
     }
   }
@@ -629,13 +654,17 @@ export function createPatchFunction(backend) {
       i(oldVnode, vnode)
     }
 
+    // 获取新旧两组子元素
     const oldCh = oldVnode.children
     const ch = vnode.children
     if (isDef(data) && isPatchable(vnode)) {
       for (i = 0; i < cbs.update.length; ++i) cbs.update[i](oldVnode, vnode)
       if (isDef((i = data.hook)) && isDef((i = i.update))) i(oldVnode, vnode)
     }
+    // 新节点没有text
     if (isUndef(vnode.text)) {
+      // 双方都有子元素
+      // diff算法比对两组子元素
       if (isDef(oldCh) && isDef(ch)) {
         if (oldCh !== ch)
           updateChildren(elm, oldCh, ch, insertedVnodeQueue, removeOnly)
@@ -643,6 +672,7 @@ export function createPatchFunction(backend) {
         if (__DEV__) {
           checkDuplicateKeys(ch)
         }
+        // 新节点拥有子元素，而老节点没有
         if (isDef(oldVnode.text)) nodeOps.setTextContent(elm, '')
         addVnodes(elm, null, ch, 0, ch.length - 1, insertedVnodeQueue)
       } else if (isDef(oldCh)) {
@@ -799,6 +829,7 @@ export function createPatchFunction(backend) {
   }
 
   return function patch(oldVnode, vnode, hydrating, removeOnly) {
+    // 销毁
     if (isUndef(vnode)) {
       if (isDef(oldVnode)) invokeDestroyHook(oldVnode)
       return
@@ -815,8 +846,10 @@ export function createPatchFunction(backend) {
       const isRealElement = isDef(oldVnode.nodeType)
       if (!isRealElement && sameVnode(oldVnode, vnode)) {
         // patch existing root node
+        // 更新流程走这里
         patchVnode(oldVnode, vnode, insertedVnodeQueue, null, null, removeOnly)
       } else {
+        // 初始化流程走这里
         if (isRealElement) {
           // mounting to a real element
           // check if this is server-rendered content and if we can perform
@@ -849,6 +882,7 @@ export function createPatchFunction(backend) {
         const parentElm = nodeOps.parentNode(oldElm)
 
         // create new node
+        // 初始化创建
         createElm(
           vnode,
           insertedVnodeQueue,
