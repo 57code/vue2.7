@@ -52,6 +52,17 @@ function callHook(vm, hook) {
   }
 }
 
+// Vue.prototype._update = function() {}
+// Vue.prototype._render = function() {
+//   this.
+// }
+Vue.prototype.$createElement = (tag, data, children) => {
+  if (tag) {
+    return { tag, data, children }
+  } else {
+    return { text: data }
+  }
+}
 Vue.prototype.$mount = function (el) {
   // parent
   const parent = document.querySelector(el)
@@ -62,12 +73,50 @@ Vue.prototype.$mount = function (el) {
     // 先清空宿主
     parent.innerHTML = ''
     // append
-    const node = this.$options.render.call(this)
-    parent.appendChild(node)
+    // const node = this.$options.render.call(this)
+    // parent.appendChild(node)
+
+    const vnode = this.$options.render.call(this, this.$createElement)
+    createElm(vnode, parent)
   }
 
   // 创建Watcher实例，作为组件渲染Watcher
   new Watcher(this, updateComponent)
+}
+
+function createElm(vnode, parentElm) {
+  const data = vnode.data
+  const children = vnode.children
+  const tag = vnode.tag
+
+  if (tag) {
+    vnode.elm = document.createElement(tag, vnode)
+
+    // 元素节点才有属性
+    if (data) {
+      // 用户设置了节点特性，则对节点执行setAttribute()操作
+      if (data.attrs) {
+        for (const attr in data.attrs) {
+          vnode.elm.setAttribute(attr, data.attrs[attr])
+        }
+      }
+    }
+    
+    // 递归处理子元素
+    if (Array.isArray(children)) {
+      for (const child of children) {
+        createElm(child, vnode.elm)
+      }
+    } else {
+      // text
+      createElm({text: children}, vnode.elm)
+    }
+    
+    parentElm.appendChild(vnode.elm)
+  } else {
+    vnode.elm = document.createTextNode(vnode.text)
+    parentElm.appendChild(vnode.elm)
+  }
 }
 
 // 代理指定对象的某个key到souceKey上
@@ -151,7 +200,7 @@ class Observer {
   constructor(value) {
     // 创建一个半生的Dep实例
     this.dep = new Dep()
-    
+
     // 定义__ob__属性
     Object.defineProperty(value, '__ob__', {
       value: this,
@@ -177,7 +226,7 @@ class Observer {
       observe(item)
     }
   }
-  
+
   walk(obj) {
     // 循环value对象所有key，依次进行拦截
     const keys = Object.keys(obj)
@@ -200,7 +249,7 @@ class Watcher {
     // 保存管理的所有deps
     this.newDepIds = new Set()
     this.newDeps = []
-    
+
     // 立刻触发getter函数执行
     this.get()
   }
@@ -333,7 +382,7 @@ function set(obj, key, val) {
     // 由于splice操作会自动通知更新，因此直接跳出
     return val
   }
-  
+
   const ob = obj.__ob__
   if (!ob) {
     // 是普通对象
@@ -351,7 +400,7 @@ function del(obj, key) {
     obj.splice(key, 1)
     return
   }
-  
+
   const ob = obj.__ob__
   delete obj[key]
   if (ob) {
@@ -379,7 +428,7 @@ methodsToPatch.forEach(function (method) {
       const ob = this.__ob__
       // 判断是否插入新元素进来
       let inserted
-      switch(method) {
+      switch (method) {
         case 'push':
         case 'unshift':
           inserted = args

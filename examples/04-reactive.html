@@ -1,14 +1,21 @@
 <div id="app">{{counter}}</div>
 <script src="../dist/vue.js"></script>
 <script>
-new Vue({
-  data() {
-    return {
-      counter: 1
+  const { reactive, toRefs } = Vue
+  new Vue({
+    data() {
+      return {
+        counter: 1
+      }
+    },
+    setup() {
+      const state = reactive({
+        counter: 10
+      })
+      return { couter: state.counter }
+    },
+    mounted() {
+      // setTimeout(() => this.counter++, 1000)
     }
-  },
-  mounted() {
-    setTimeout(() => this.counter++, 1000)
-  }
-}).$mount('#app')
+  }).$mount('#app')
 </script>
