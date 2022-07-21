@@ -65,26 +65,193 @@ Vue.prototype.$createElement = (tag, data, children) => {
 }
 Vue.prototype.$mount = function (el) {
   // parent
-  const parent = document.querySelector(el)
+  this.$el = document.querySelector(el)
   // data
   // const data = this._data
 
   const updateComponent = () => {
     // 先清空宿主
-    parent.innerHTML = ''
+    // parent.innerHTML = ''
     // append
     // const node = this.$options.render.call(this)
     // parent.appendChild(node)
 
     const vnode = this.$options.render.call(this, this.$createElement)
-    createElm(vnode, parent)
+    // createElm(vnode, parent)
+    this._update(vnode)
   }
 
   // 创建Watcher实例，作为组件渲染Watcher
   new Watcher(this, updateComponent)
 }
 
-function createElm(vnode, parentElm) {
+Vue.prototype._update = function (vnode) {
+  const prevVnode = this._vnode
+  this._vnode = vnode
+  // Vue.prototype.__patch__ is injected in entry points
+  // based on the rendering backend used.
+  if (!prevVnode) {
+    // initial render
+    this.patch(this.$el, vnode)
+  } else {
+    // updates
+    this.patch(prevVnode, vnode)
+  }
+}
+Vue.prototype.patch = (oldVnode, vnode) => {
+  if (oldVnode.nodeType) {
+    // real element
+    createElm(vnode, oldVnode)
+  } else {
+    // update
+    patchVnode(oldVnode, vnode)
+  }
+}
+
+function patchVnode(oldVnode, vnode) {
+  console.log(oldVnode, vnode);
+  const elm = (vnode.elm = oldVnode.elm)
+
+  const oldCh = oldVnode.children
+  const ch = vnode.children
+
+  if (isUndef(vnode.text)) {
+    if (isDef(oldCh) && isDef(ch)) {
+      updateChildren(elm, oldCh, ch)
+    }
+    // 省略其他几种边界情况
+  } else if (oldVnode.text !== vnode.text) {
+    elm.textContent = vnode.text
+  }
+}
+
+function updateChildren(
+  parentElm,
+  oldCh,
+  newCh
+) {
+  let oldStartIdx = 0
+  let newStartIdx = 0
+  let oldEndIdx = oldCh.length - 1
+  let oldStartVnode = oldCh[0]
+  let oldEndVnode = oldCh[oldEndIdx]
+  let newEndIdx = newCh.length - 1
+  let newStartVnode = newCh[0]
+  let newEndVnode = newCh[newEndIdx]
+  let oldKeyToIdx, idxInOld, vnodeToMove, refElm
+
+  while (oldStartIdx <= oldEndIdx && newStartIdx <= newEndIdx) {
+    if (isUndef(oldStartVnode)) {
+      oldStartVnode = oldCh[++oldStartIdx] // Vnode has been moved left
+    } else if (isUndef(oldEndVnode)) {
+      oldEndVnode = oldCh[--oldEndIdx]
+    } else if (sameVnode(oldStartVnode, newStartVnode)) {
+      patchVnode(
+        oldStartVnode,
+        newStartVnode,
+      )
+      oldStartVnode = oldCh[++oldStartIdx]
+      newStartVnode = newCh[++newStartIdx]
+    } else if (sameVnode(oldEndVnode, newEndVnode)) {
+      patchVnode(
+        oldEndVnode,
+        newEndVnode
+      )
+      oldEndVnode = oldCh[--oldEndIdx]
+      newEndVnode = newCh[--newEndIdx]
+    } else if (sameVnode(oldStartVnode, newEndVnode)) {
+      // Vnode moved right
+      patchVnode(
+        oldStartVnode,
+        newEndVnode
+      )
+      parentElm.insertBefore(oldStartVnode.elm, oldEndVnode.elm.nextSibling)
+      oldStartVnode = oldCh[++oldStartIdx]
+      newEndVnode = newCh[--newEndIdx]
+    } else if (sameVnode(oldEndVnode, newStartVnode)) {
+      // Vnode moved left
+      patchVnode(
+        oldEndVnode,
+        newStartVnode
+      )
+      parentElm.insertBefore(oldEndVnode.elm, oldStartVnode.elm.nextSibling)
+      oldEndVnode = oldCh[--oldEndIdx]
+      newStartVnode = newCh[++newStartIdx]
+    } else {
+      if (isUndef(oldKeyToIdx))
+        oldKeyToIdx = createKeyToOldIdx(oldCh, oldStartIdx, oldEndIdx)
+      idxInOld = isDef(newStartVnode.key)
+        ? oldKeyToIdx[newStartVnode.key]
+        : findIdxInOld(newStartVnode, oldCh, oldStartIdx, oldEndIdx)
+      if (isUndef(idxInOld)) {
+        // New element
+        createElm(
+          newStartVnode,
+          parentElm,
+          oldStartVnode.elm,
+        )
+      } else {
+        vnodeToMove = oldCh[idxInOld]
+        patchVnode(
+          vnodeToMove,
+          newStartVnode
+        )
+        oldCh[idxInOld] = undefined
+
+        parentElm.insertBefore(
+          vnodeToMove.elm,
+          oldStartVnode.elm
+        )
+      }
+      newStartVnode = newCh[++newStartIdx]
+    }
+  }
+  if (oldStartIdx > oldEndIdx) {
+    refElm = isUndef(newCh[newEndIdx + 1]) ? null : newCh[newEndIdx + 1].elm
+    for (; newStartIdx <= newEndIdx; ++newStartIdx) {
+      createElm(
+        vnodes[newStartIdx],
+        parentElm,
+        refElm
+      )
+    }
+  } else if (newStartIdx > newEndIdx) {
+    for (; oldStartIdx <= oldEndIdx; ++oldStartIdx) {
+      const el = oldCh[oldStartIdx]
+      const parent = el.parentNode
+      // element may have already been removed due to v-html / v-text
+      if (isDef(parent)) {
+        parent.removeChild(el)
+      }
+    }
+  }
+}
+function sameVnode(oldVnode, vnode) {
+  return oldVnode.key === vnode.key && oldVnode.tag === vnode.tag
+}
+function createKeyToOldIdx(children, beginIdx, endIdx) {
+  let i, key
+  const map = {}
+  for (i = beginIdx; i <= endIdx; ++i) {
+    key = children[i].key
+    if (isDef(key)) map[key] = i
+  }
+  return map
+}
+function findIdxInOld(node, oldCh, start, end) {
+  for (let i = start; i < end; i++) {
+    const c = oldCh[i]
+    if (isDef(c) && sameVnode(node, c)) return i
+  }
+}
+function isDef(v) {
+  return v !== undefined && v !== null
+}
+function isUndef(v) {
+  return v === undefined || v === null
+}
+
+function createElm(vnode, parentElm, refElm = null) {
   const data = vnode.data
   const children = vnode.children
   const tag = vnode.tag
@@ -101,7 +268,7 @@ function createElm(vnode, parentElm) {
         }
       }
     }
-    
+
     // 递归处理子元素
     if (Array.isArray(children)) {
       for (const child of children) {
@@ -109,14 +276,15 @@ function createElm(vnode, parentElm) {
       }
     } else {
       // text
-      createElm({text: children}, vnode.elm)
+      createElm({ text: children }, vnode.elm)
     }
-    
-    parentElm.appendChild(vnode.elm)
+
+    // parentElm.appendChild(vnode.elm)
   } else {
     vnode.elm = document.createTextNode(vnode.text)
-    parentElm.appendChild(vnode.elm)
+    // parentElm.appendChild(vnode.elm)
   }
+  parentElm.insertBefore(vnode.elm, refElm)
 }
 
 // 代理指定对象的某个key到souceKey上
