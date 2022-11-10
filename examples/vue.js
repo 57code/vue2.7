@@ -65,28 +65,208 @@ Vue.prototype.$createElement = (tag, data, children) => {
 
 Vue.prototype.$mount = function (el) {
   // parent
-  const parent = document.querySelector(el)
+  // const parent = document.querySelector(el)
+  this.$el = document.querySelector(el)
   // data
   // const data = this._data
 
   const updateComponent = () => {
     // 先清空宿主
-    parent.innerHTML = ''
+    // parent.innerHTML = ''
     // append
     // const node = this.$options.render.call(this)
     // parent.appendChild(node)
 
     // vnode实现
     const vnode = this.$options.render.call(this, this.$createElement)
-    createElm(vnode, parent)
+    // createElm(vnode, parent)
+    this._update(vnode)
   }
 
   // 创建Watcher实例，作为组件渲染Watcher
   new Watcher(this, updateComponent)
 }
 
+Vue.prototype._update = function(vnode) {
+  // 获取上次计算出的vnode
+  const prevVnode = this._vnode
+  // 保存最新的计算结果
+  this._vnode = vnode
+  if (!prevVnode) {
+    // init
+    this.patch(this.$el, vnode)
+  } else {
+    // update
+    this.patch(prevVnode, vnode)
+  }
+}
+
+Vue.prototype.patch = function(oldVnode, vnode) {
+  // 如果是真实dom传入，则走初始化
+  if (oldVnode.nodeType) {
+    // real element
+    createElm(vnode, oldVnode)
+  } else {
+    // update
+    patchVnode(oldVnode, vnode)
+  }
+}
+
+function patchVnode(oldVnode, vnode) {
+  // 更新目标dom
+  const elm = vnode.elm = oldVnode.elm
+  
+  // 获取双方孩子元素
+  const oldCh = oldVnode.children
+  const ch = vnode.children
+
+  if (isUndef(vnode.text)) {
+    if (isDef(ch) && isDef(oldCh)) {
+      // 双方都是子元素
+      // diff: 比对传入的两组子元素
+      updateChildren(elm, oldCh, ch)
+    }
+  } else if (oldVnode.text !== vnode.text) {
+    // 双方都是文本且不相等
+    elm.textContent = vnode.text
+  }
+}
+
+function updateChildren(
+  parentElm,
+  oldCh,
+  newCh
+) {
+  // 新旧首尾4个索引和对应节点
+  let oldStartIdx = 0
+  let newStartIdx = 0
+  let oldEndIdx = oldCh.length - 1
+  let oldStartVnode = oldCh[0]
+  let oldEndVnode = oldCh[oldEndIdx]
+  let newEndIdx = newCh.length - 1
+  let newStartVnode = newCh[0]
+  let newEndVnode = newCh[newEndIdx]
+  // 查找相同节点时所需变量
+  // oldKeyToIdx缓存节点key，优化查找速度；idxInOld保存查找节点索引；
+  // vnodeToMove保存要更新节点；refElm是参考节点，节点应该移动的文职；
+  let oldKeyToIdx, idxInOld, vnodeToMove, refElm
+
+  while (oldStartIdx <= oldEndIdx && newStartIdx <= newEndIdx) {
+    if (isUndef(oldStartVnode)) {
+      oldStartVnode = oldCh[++oldStartIdx] // Vnode has been moved left
+    } else if (isUndef(oldEndVnode)) {
+      oldEndVnode = oldCh[--oldEndIdx]
+    } else if (sameVnode(oldStartVnode, newStartVnode)) {
+      patchVnode(
+        oldStartVnode,
+        newStartVnode,
+      )
+      oldStartVnode = oldCh[++oldStartIdx]
+      newStartVnode = newCh[++newStartIdx]
+    } else if (sameVnode(oldEndVnode, newEndVnode)) {
+      patchVnode(
+        oldEndVnode,
+        newEndVnode
+      )
+      oldEndVnode = oldCh[--oldEndIdx]
+      newEndVnode = newCh[--newEndIdx]
+    } else if (sameVnode(oldStartVnode, newEndVnode)) {
+      // Vnode moved right
+      patchVnode(
+        oldStartVnode,
+        newEndVnode
+      )
+      parentElm.insertBefore(oldStartVnode.elm, oldEndVnode.elm.nextSibling)
+      oldStartVnode = oldCh[++oldStartIdx]
+      newEndVnode = newCh[--newEndIdx]
+    } else if (sameVnode(oldEndVnode, newStartVnode)) {
+      // Vnode moved left
+      patchVnode(
+        oldEndVnode,
+        newStartVnode
+      )
+      parentElm.insertBefore(oldEndVnode.elm, oldStartVnode.elm.nextSibling)
+      oldEndVnode = oldCh[--oldEndIdx]
+      newStartVnode = newCh[++newStartIdx]
+    } else {
+      if (isUndef(oldKeyToIdx))
+        oldKeyToIdx = createKeyToOldIdx(oldCh, oldStartIdx, oldEndIdx)
+      idxInOld = isDef(newStartVnode.key)
+        ? oldKeyToIdx[newStartVnode.key]
+        : findIdxInOld(newStartVnode, oldCh, oldStartIdx, oldEndIdx)
+      if (isUndef(idxInOld)) {
+        // New element
+        createElm(
+          newStartVnode,
+          parentElm,
+          oldStartVnode.elm,
+        )
+      } else {
+        vnodeToMove = oldCh[idxInOld]
+        patchVnode(
+          vnodeToMove,
+          newStartVnode
+        )
+        oldCh[idxInOld] = undefined
+
+        parentElm.insertBefore(
+          vnodeToMove.elm,
+          oldStartVnode.elm
+        )
+      }
+      newStartVnode = newCh[++newStartIdx]
+    }
+  }
+  // 后续操作
+  if (oldStartIdx > oldEndIdx) {
+    refElm = isUndef(newCh[newEndIdx + 1]) ? null : newCh[newEndIdx + 1].elm
+    for (; newStartIdx <= newEndIdx; ++newStartIdx) {
+      createElm(
+        vnodes[newStartIdx],
+        parentElm,
+        refElm
+      )
+    }
+  } else if (newStartIdx > newEndIdx) {
+    for (; oldStartIdx <= oldEndIdx; ++oldStartIdx) {
+      const el = oldCh[oldStartIdx]
+      const parent = el.parentNode
+      // element may have already been removed due to v-html / v-text
+      if (isDef(parent)) {
+        parent.removeChild(el)
+      }
+    }
+  }
+}
+
+function sameVnode(oldVnode, vnode) {
+  return oldVnode.key === vnode.key && oldVnode.tag === vnode.tag
+}
+function createKeyToOldIdx(children, beginIdx, endIdx) {
+  let i, key
+  const map = {}
+  for (i = beginIdx; i <= endIdx; ++i) {
+    key = children[i].key
+    if (isDef(key)) map[key] = i
+  }
+  return map
+}
+function findIdxInOld(node, oldCh, start, end) {
+  for (let i = start; i < end; i++) {
+    const c = oldCh[i]
+    if (isDef(c) && sameVnode(node, c)) return i
+  }
+}
+
+function isUndef(v) {
+  return v === undefined || v === null
+}
+function isDef(v) {
+  return v !== undefined && v !== null
+}
+
 // 递归便利vnode，创建dom树，添加到parentElm上
-function createElm(vnode, parentElm) {
+function createElm(vnode, parentElm, refElm = null) {
   // 1.获取tag并创建元素
   const tag = vnode.tag
   // 2.获取children情况，递归处理它们
@@ -118,12 +298,13 @@ function createElm(vnode, parentElm) {
       }
     }
     
-    parentElm.appendChild(vnode.elm)
+    // parentElm.appendChild(vnode.elm)
   } else {
     // text
     vnode.elm = document.createTextNode(vnode.text)
-    parentElm.appendChild(vnode.elm)
+    // parentElm.appendChild(vnode.elm)
   }
+  parentElm.insertBefore(vnode.elm, refElm)
 }
 
 // 代理指定对象的某个key到souceKey上

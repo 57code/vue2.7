@@ -39,9 +39,9 @@
       const baz = this.bar.baz || ''
       const arr = this.arr.join(',')
       return h('div', { attrs: { id: 'box', title: '列表' } }, [
-        h('p', {}, this.foo + baz + arr),
-        h('p', {}, this.foo + baz + arr),
-        h('p', {}, this.foo + baz + arr),
+        h('p', {}, [h('', this.foo + baz + arr)]),
+        h('p', {}, [h('', this.foo + baz + arr)]),
+        h('p', {}, [h('', this.foo + baz + arr)]),
       ])
     }
   }).$mount('#app')
